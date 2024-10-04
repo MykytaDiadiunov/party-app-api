@@ -8,6 +8,9 @@ import (
 	"go-rest-api/config/container"
 	"go-rest-api/internal/infra/http/controllers"
 	"net/http"
+	"os"
+	"path/filepath"
+	"strings"
 )
 
 func CreateRouter(con container.Container) http.Handler {
@@ -36,8 +39,21 @@ func CreateRouter(con container.Container) http.Handler {
 					apiRouter.Use(con.AuthMw)
 					UserRouter(apiRouter, con.UserController)
 				})
+				apiRouter.Route("/", func(apiRouter chi.Router) {
+					apiRouter.Use(con.AuthMw)
+					PartyRouter(apiRouter, con.PartyController)
+				})
 			})
 		})
+	})
+
+	router.Get("/static/*", func(w http.ResponseWriter, r *http.Request) {
+		workDir, _ := os.Getwd()
+		filesDir := http.Dir(filepath.Join(workDir, "file_storage"))
+		rctx := chi.RouteContext(r.Context())
+		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		fs := http.StripPrefix(pathPrefix, http.FileServer(filesDir))
+		fs.ServeHTTP(w, r)
 	})
 
 	return router
@@ -66,6 +82,40 @@ func UserRouter(r chi.Router, uc controllers.UserController) {
 			"/me",
 			uc.FindMe(),
 		)
+		apiRouter.Post(
+			"/me/balance",
+			uc.UpdateMyBalance(),
+		)
+	})
+}
+
+func PartyRouter(r chi.Router, pc controllers.PartyController) {
+	r.Route("/", func(apiRouter chi.Router) {
+		apiRouter.Get(
+			"/parties",
+			pc.GetParties(),
+		)
+		apiRouter.Get(
+			"/parties/creator/{creatorId}",
+			pc.FindByCreatorId(),
+		)
+		apiRouter.Get(
+			"/party/{partyId}",
+			pc.FindById(),
+		)
+		apiRouter.Post(
+			"/party",
+			pc.Save(),
+		)
+		apiRouter.Put(
+			"/party/{partyId}",
+			pc.Update(),
+		)
+		apiRouter.Delete(
+			"/party/{partyId}",
+			pc.Delete(),
+		)
+
 	})
 }
 

@@ -5,4 +5,9 @@ type User struct {
 	Name     string
 	Email    string
 	Password string
+	Points   int32
+}
+
+type UpdateUserBalanceAmount struct {
+	Amount int32
 }

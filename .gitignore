@@ -22,3 +22,5 @@ go.work
 .vscode
 .env
 appname.db
+file_storage
+file_storage/*

@@ -11,6 +11,6 @@ func (s SessionDto) DomainToDto(token string, user domain.User) SessionDto {
 	u := UserDto{}
 	return SessionDto{
 		Token: token,
-		User:  u.ToDomainModel(user),
+		User:  u.DomainToDto(user),
 	}
 }

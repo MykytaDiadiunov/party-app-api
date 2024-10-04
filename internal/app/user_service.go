@@ -1,12 +1,14 @@
 package app
 
 import (
+	"errors"
 	"go-rest-api/internal/domain"
 	"go-rest-api/internal/infra/database/repositories"
 	"golang.org/x/crypto/bcrypt"
 )
 
 type UserService interface {
+	UpdateUserBalance(user domain.User, amount int32) (domain.User, error)
 	FindByEmail(email string) (domain.User, error)
 	FindById(id uint64) (domain.User, error)
 	Save(user domain.User) (domain.User, error)
@@ -21,6 +23,19 @@ func NewUserService(userRepository repositories.UserRepository) UserService {
 	return userService{
 		userRepo: userRepository,
 	}
+}
+
+func (u userService) UpdateUserBalance(user domain.User, amount int32) (domain.User, error) {
+	if user.Points+amount < 0 {
+		return domain.User{}, errors.New("insufficient funds")
+	}
+
+	user, err := u.userRepo.UpdateUserBalance(user, amount)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
 }
 
 func (u userService) FindByEmail(email string) (domain.User, error) {

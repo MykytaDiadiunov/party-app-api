@@ -5,6 +5,7 @@ import (
 	"go-rest-api/internal/app"
 	"go-rest-api/internal/infra/database"
 	"go-rest-api/internal/infra/database/repositories"
+	"go-rest-api/internal/infra/filesystem"
 	"go-rest-api/internal/infra/http/controllers"
 	"go-rest-api/internal/infra/http/middlewares"
 	"net/http"
@@ -19,11 +20,13 @@ type Container struct {
 type Services struct {
 	app.UserService
 	app.SessionService
+	app.PartyService
 }
 
 type Controllers struct {
 	controllers.UserController
 	controllers.SessionController
+	controllers.PartyController
 }
 
 type Middleware struct {
@@ -36,12 +39,16 @@ func New() Container {
 
 	userRepo := repositories.NewUserRepository(db)
 	sessionRepo := repositories.NewSessionRepository(db)
+	partyRepo := repositories.NewPartyRepository(db)
 
+	imageService := filesystem.NewImageStorageService("file_storage")
 	userService := app.NewUserService(userRepo)
 	sessionService := app.NewSessionService(sessionRepo, userService, tknAuth)
+	partyService := app.NewPartyService(partyRepo, imageService, userService)
 
 	userController := controllers.NewUserController(userService)
 	sessionController := controllers.NewSessionController(sessionService, userService)
+	partyController := controllers.NewPartyController(partyService)
 
 	authMiddleware := middlewares.AuthMiddleware(tknAuth, sessionService, userService)
 
@@ -49,10 +56,12 @@ func New() Container {
 		Services: Services{
 			userService,
 			sessionService,
+			partyService,
 		},
 		Controllers: Controllers{
 			userController,
 			sessionController,
+			partyController,
 		},
 		Middleware: Middleware{
 			authMiddleware,

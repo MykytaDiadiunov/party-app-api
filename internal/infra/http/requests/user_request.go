@@ -1,6 +1,8 @@
 package requests
 
-import "go-rest-api/internal/domain"
+import (
+	"go-rest-api/internal/domain"
+)
 
 type RegisterRequest struct {
 	Name     string `json:"name" validate:"required"`
@@ -11,6 +13,10 @@ type RegisterRequest struct {
 type LoginRequest struct {
 	Email    string `json:"email" validate:"required"`
 	Password string `json:"password" validate:"required"`
+}
+
+type UpdateMyBalanceRequest struct {
+	Amount int32 `json:"amount" validate:"required"`
 }
 
 func (r RegisterRequest) ToDomainModel() (interface{}, error) {
@@ -25,5 +31,11 @@ func (r LoginRequest) ToDomainModel() (interface{}, error) {
 	return domain.User{
 		Email:    r.Email,
 		Password: r.Password,
+	}, nil
+}
+
+func (r UpdateMyBalanceRequest) ToDomainModel() (interface{}, error) {
+	return domain.UpdateUserBalanceAmount{
+		Amount: r.Amount,
 	}, nil
 }

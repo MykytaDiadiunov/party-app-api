@@ -16,10 +16,29 @@ func NewUserController(userService app.UserService) UserController {
 	return UserController{userService: userService}
 }
 
+func (c UserController) UpdateMyBalance() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := r.Context().Value(UserKey).(domain.User)
+
+		amount, err := requests.Bind(r, requests.UpdateMyBalanceRequest{}, domain.UpdateUserBalanceAmount{})
+		if err != nil {
+			BadRequest(w, err)
+			return
+		}
+
+		updatedUser, err := c.userService.UpdateUserBalance(user, amount.Amount)
+		if err != nil {
+			BadRequest(w, err)
+			return
+		}
+		Success(w, resources.UserDto{}.DomainToDto(updatedUser))
+	}
+}
+
 func (c UserController) FindMe() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		user := r.Context().Value(UserKey).(domain.User)
-		Success(w, resources.UserDto{}.ToDomainModel(user))
+		Success(w, resources.UserDto{}.DomainToDto(user))
 	}
 }
 
