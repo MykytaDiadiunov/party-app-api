@@ -10,6 +10,7 @@ import (
 )
 
 type PartyService interface {
+	Find(id uint64) (domain.Party, error)
 	FindById(id uint64) (domain.Party, error)
 	FindByCreatorId(creatorId uint64, page, limit int32) (domain.Parties, error)
 	GetParties(page, limit int32) (domain.Parties, error)
@@ -30,6 +31,14 @@ func NewPartyService(partyRepo repositories.PartyRepository, imageServ filesyste
 		imageService: imageServ,
 		userService:  userServ,
 	}
+}
+
+func (p partyService) Find(id uint64) (domain.Party, error) {
+	party, err := p.FindById(id)
+	if err != nil {
+		return domain.Party{}, err
+	}
+	return party, nil
 }
 
 func (p partyService) FindById(id uint64) (domain.Party, error) {
@@ -62,7 +71,12 @@ func (p partyService) Save(party domain.Party) (domain.Party, error) {
 		return domain.Party{}, err
 	}
 
-	_, err = p.userService.UpdateUserBalance(user, party.Price*(-1))
+	amountToSpend := party.Price
+	if amountToSpend < 10 {
+		amountToSpend = 10
+	}
+
+	_, err = p.userService.UpdateUserBalance(user, amountToSpend*(-1))
 	if err != nil {
 		return domain.Party{}, err
 	}
@@ -101,6 +115,7 @@ func (p partyService) Update(party domain.Party) (domain.Party, error) {
 		}
 		party.Image = imageFileName
 	}
+
 	party.CreatorId = currentParty.CreatorId
 	updatedParty, err := p.partyRepo.Update(party)
 	if err != nil {

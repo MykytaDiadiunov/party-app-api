@@ -195,15 +195,13 @@ func (p partyRepository) Update(party domain.Party) (domain.Party, error) {
                  title = $1,
                  description = $2,
                  image = $3,
-                 price = $4,
-                 start_date = $5 WHERE id = $6`
+                 start_date = $4 WHERE id = $5`
 
 	_, err := p.db.Exec(
 		sqlCommand,
 		partyModel.Title,
 		partyModel.Description,
 		partyModel.Image,
-		partyModel.Price,
 		partyModel.StartDate,
 		partyModel.Id,
 	)
@@ -211,7 +209,12 @@ func (p partyRepository) Update(party domain.Party) (domain.Party, error) {
 		return domain.Party{}, err
 	}
 
-	return p.modelToDomain(partyModel), nil
+	newParty, err := p.FindById(partyModel.Id)
+	if err != nil {
+		return domain.Party{}, err
+	}
+
+	return newParty, nil
 }
 
 func (p partyRepository) Delete(id uint64) error {

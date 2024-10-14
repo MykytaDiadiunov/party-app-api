@@ -17,7 +17,6 @@ type UpdatePartyRequest struct {
 	Title       string    `json:"title" validate:"required"`
 	Description string    `json:"description" validate:"required"`
 	Image       string    `json:"image" validate:"required"`
-	Price       int32     `json:"price" validate:"required"`
 	StartDate   time.Time `json:"startDate" validate:"required"`
 }
 
@@ -26,7 +25,6 @@ func (upr UpdatePartyRequest) ToDomainModel() (interface{}, error) {
 		Title:       upr.Title,
 		Description: upr.Description,
 		Image:       upr.Image,
-		Price:       upr.Price,
 		StartDate:   upr.StartDate,
 	}, nil
 }

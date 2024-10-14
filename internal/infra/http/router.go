@@ -6,7 +6,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"go-rest-api/config/container"
+	"go-rest-api/internal/domain"
 	"go-rest-api/internal/infra/http/controllers"
+	"go-rest-api/internal/infra/http/middlewares"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -41,7 +43,7 @@ func CreateRouter(con container.Container) http.Handler {
 				})
 				apiRouter.Route("/", func(apiRouter chi.Router) {
 					apiRouter.Use(con.AuthMw)
-					PartyRouter(apiRouter, con.PartyController)
+					PartyRouter(apiRouter, con.PartyController, con)
 				})
 			})
 		})
@@ -50,8 +52,8 @@ func CreateRouter(con container.Container) http.Handler {
 	router.Get("/static/*", func(w http.ResponseWriter, r *http.Request) {
 		workDir, _ := os.Getwd()
 		filesDir := http.Dir(filepath.Join(workDir, "file_storage"))
-		rctx := chi.RouteContext(r.Context())
-		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		requestCtx := chi.RouteContext(r.Context())
+		pathPrefix := strings.TrimSuffix(requestCtx.RoutePattern(), "/*")
 		fs := http.StripPrefix(pathPrefix, http.FileServer(filesDir))
 		fs.ServeHTTP(w, r)
 	})
@@ -89,7 +91,9 @@ func UserRouter(r chi.Router, uc controllers.UserController) {
 	})
 }
 
-func PartyRouter(r chi.Router, pc controllers.PartyController) {
+func PartyRouter(r chi.Router, pc controllers.PartyController, con container.Container) {
+	pathObjMw := middlewares.PathObjectMiddleware(con.PartyService)
+	isOwnerMw := middlewares.IsOwnerMiddleware[domain.Party]()
 	r.Route("/", func(apiRouter chi.Router) {
 		apiRouter.Get(
 			"/parties",
@@ -107,11 +111,11 @@ func PartyRouter(r chi.Router, pc controllers.PartyController) {
 			"/party",
 			pc.Save(),
 		)
-		apiRouter.Put(
+		apiRouter.With(pathObjMw).With(isOwnerMw).Put(
 			"/party/{partyId}",
 			pc.Update(),
 		)
-		apiRouter.Delete(
+		apiRouter.With(pathObjMw).With(isOwnerMw).Delete(
 			"/party/{partyId}",
 			pc.Delete(),
 		)

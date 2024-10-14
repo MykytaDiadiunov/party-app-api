@@ -18,3 +18,7 @@ type Parties struct {
 	CurrentPage int32
 	LastPage    int32
 }
+
+func (p Party) GetUserId() uint64 {
+	return p.CreatorId
+}

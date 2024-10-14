@@ -122,6 +122,7 @@ func (p PartyController) Save() http.HandlerFunc {
 		domainParty, err = p.partyService.Save(domainParty)
 		if err != nil {
 			InternalServerError(w, err)
+			return
 		}
 
 		partyDto := resources.PartyDto{}
