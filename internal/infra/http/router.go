@@ -2,9 +2,6 @@ package http
 
 import (
 	"errors"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"go-rest-api/config/container"
 	"go-rest-api/internal/domain"
 	"go-rest-api/internal/infra/http/controllers"
@@ -13,6 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func CreateRouter(con container.Container) http.Handler {
@@ -43,7 +44,7 @@ func CreateRouter(con container.Container) http.Handler {
 				})
 				apiRouter.Route("/", func(apiRouter chi.Router) {
 					apiRouter.Use(con.AuthMw)
-					PartyRouter(apiRouter, con.PartyController, con)
+					PartyRouter(apiRouter, con)
 				})
 			})
 		})
@@ -91,35 +92,46 @@ func UserRouter(r chi.Router, uc controllers.UserController) {
 	})
 }
 
-func PartyRouter(r chi.Router, pc controllers.PartyController, con container.Container) {
+func PartyRouter(r chi.Router, con container.Container) {
 	pathObjMw := middlewares.PathObjectMiddleware(con.PartyService)
 	isOwnerMw := middlewares.IsOwnerMiddleware[domain.Party]()
 	r.Route("/", func(apiRouter chi.Router) {
 		apiRouter.Get(
 			"/parties",
-			pc.GetParties(),
+			con.PartyController.GetParties(),
 		)
 		apiRouter.Get(
 			"/parties/creator/{creatorId}",
-			pc.FindByCreatorId(),
+			con.PartyController.FindByCreatorId(),
 		)
 		apiRouter.Get(
 			"/party/{partyId}",
-			pc.FindById(),
+			con.PartyController.FindById(),
 		)
 		apiRouter.Post(
 			"/party",
-			pc.Save(),
+			con.PartyController.Save(),
 		)
 		apiRouter.With(pathObjMw).With(isOwnerMw).Put(
 			"/party/{partyId}",
-			pc.Update(),
+			con.PartyController.Update(),
 		)
 		apiRouter.With(pathObjMw).With(isOwnerMw).Delete(
 			"/party/{partyId}",
-			pc.Delete(),
+			con.PartyController.Delete(),
 		)
-
+		apiRouter.Get(
+			"/party/join/{partyId}",
+			con.MemberController.Save(),
+		)
+		apiRouter.Get(
+			"/party/check/{partyId}",
+			con.MemberController.Exists(),
+		)
+		apiRouter.Delete(
+			"/party/leave/{partyId}",
+			con.MemberController.Delete(),
+		)
 	})
 }
 

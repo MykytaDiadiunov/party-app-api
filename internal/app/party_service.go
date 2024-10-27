@@ -100,8 +100,12 @@ func (p partyService) Save(party domain.Party) (domain.Party, error) {
 
 func (p partyService) Update(party domain.Party) (domain.Party, error) {
 	currentParty, err := p.partyRepo.FindById(party.Id)
-	imageExist, err := p.imageService.FileIsExist(party.Image)
 	if err != nil {
+		return domain.Party{}, err
+	}
+
+	imageExist, imgErr := p.imageService.FileIsExist(party.Image)
+	if imgErr != nil {
 		return domain.Party{}, err
 	}
 

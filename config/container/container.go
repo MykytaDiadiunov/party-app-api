@@ -1,7 +1,6 @@
 package container
 
 import (
-	"github.com/go-chi/jwtauth/v5"
 	"go-rest-api/internal/app"
 	"go-rest-api/internal/infra/database"
 	"go-rest-api/internal/infra/database/repositories"
@@ -9,6 +8,8 @@ import (
 	"go-rest-api/internal/infra/http/controllers"
 	"go-rest-api/internal/infra/http/middlewares"
 	"net/http"
+
+	"github.com/go-chi/jwtauth/v5"
 )
 
 type Container struct {
@@ -21,12 +22,14 @@ type Services struct {
 	app.UserService
 	app.SessionService
 	app.PartyService
+	app.MemberService
 }
 
 type Controllers struct {
 	controllers.UserController
 	controllers.SessionController
 	controllers.PartyController
+	controllers.MemberController
 }
 
 type Middleware struct {
@@ -40,15 +43,18 @@ func New() Container {
 	userRepo := repositories.NewUserRepository(db)
 	sessionRepo := repositories.NewSessionRepository(db)
 	partyRepo := repositories.NewPartyRepository(db)
+	memberRepo := repositories.NewMemberRepository(db)
 
 	imageService := filesystem.NewImageStorageService("file_storage")
 	userService := app.NewUserService(userRepo)
 	sessionService := app.NewSessionService(sessionRepo, userService, tknAuth)
 	partyService := app.NewPartyService(partyRepo, imageService, userService)
+	memberService := app.NewMemberService(memberRepo, userService, partyService)
 
 	userController := controllers.NewUserController(userService)
 	sessionController := controllers.NewSessionController(sessionService, userService)
-	partyController := controllers.NewPartyController(partyService)
+	memberController := controllers.NewMemberController(memberService)
+	partyController := controllers.NewPartyController(partyService, memberService)
 
 	authMiddleware := middlewares.AuthMiddleware(tknAuth, sessionService, userService)
 
@@ -57,11 +63,13 @@ func New() Container {
 			userService,
 			sessionService,
 			partyService,
+			memberService,
 		},
 		Controllers: Controllers{
 			userController,
 			sessionController,
 			partyController,
+			memberController,
 		},
 		Middleware: Middleware{
 			authMiddleware,
