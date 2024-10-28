@@ -2,15 +2,18 @@ package http
 
 import (
 	"errors"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/go-chi/cors"
 	"go-rest-api/config/container"
+	"go-rest-api/internal/domain"
 	"go-rest-api/internal/infra/http/controllers"
+	"go-rest-api/internal/infra/http/middlewares"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/go-chi/cors"
 )
 
 func CreateRouter(con container.Container) http.Handler {
@@ -37,11 +40,15 @@ func CreateRouter(con container.Container) http.Handler {
 				})
 				apiRouter.Route("/user", func(apiRouter chi.Router) {
 					apiRouter.Use(con.AuthMw)
-					UserRouter(apiRouter, con.UserController)
+					UserRouter(apiRouter, con)
 				})
 				apiRouter.Route("/", func(apiRouter chi.Router) {
 					apiRouter.Use(con.AuthMw)
-					PartyRouter(apiRouter, con.PartyController)
+					PartyRouter(apiRouter, con)
+				})
+				apiRouter.Route("/actions", func(apiRouter chi.Router) {
+					apiRouter.Use(con.AuthMw)
+					PartyActionsRouter(apiRouter, con)
 				})
 			})
 		})
@@ -50,8 +57,8 @@ func CreateRouter(con container.Container) http.Handler {
 	router.Get("/static/*", func(w http.ResponseWriter, r *http.Request) {
 		workDir, _ := os.Getwd()
 		filesDir := http.Dir(filepath.Join(workDir, "file_storage"))
-		rctx := chi.RouteContext(r.Context())
-		pathPrefix := strings.TrimSuffix(rctx.RoutePattern(), "/*")
+		requestCtx := chi.RouteContext(r.Context())
+		pathPrefix := strings.TrimSuffix(requestCtx.RoutePattern(), "/*")
 		fs := http.StripPrefix(pathPrefix, http.FileServer(filesDir))
 		fs.ServeHTTP(w, r)
 	})
@@ -76,46 +83,84 @@ func AuthRouter(r chi.Router, sc controllers.SessionController, amw func(http.Ha
 	})
 }
 
-func UserRouter(r chi.Router, uc controllers.UserController) {
+func UserRouter(r chi.Router, con container.Container) {
 	r.Route("/", func(apiRouter chi.Router) {
 		apiRouter.Get(
 			"/me",
-			uc.FindMe(),
+			con.FindMe(),
 		)
 		apiRouter.Post(
 			"/me/balance",
-			uc.UpdateMyBalance(),
+			con.UpdateMyBalance(),
+		)
+		apiRouter.Get(
+			"/me/favorite/check/{likedId}",
+			con.LikeExists(),
+		)
+		apiRouter.Get(
+			"/me/favorites",
+			con.GetFavorites(),
+		)
+		apiRouter.Get(
+			"/favorites/{likedId}",
+			con.GetByLikedUser(),
+		)
+		apiRouter.Get(
+			"/me/favorites/add/{likedId}",
+			con.SetLike(),
+		)
+		apiRouter.Delete(
+			"/me/favorites/remove/{likedId}",
+			con.DeleteLike(),
 		)
 	})
 }
 
-func PartyRouter(r chi.Router, pc controllers.PartyController) {
+func PartyRouter(r chi.Router, con container.Container) {
+	pathObjMw := middlewares.PathObjectMiddleware(con.PartyService)
+	isOwnerMw := middlewares.IsOwnerMiddleware[domain.Party]()
 	r.Route("/", func(apiRouter chi.Router) {
 		apiRouter.Get(
 			"/parties",
-			pc.GetParties(),
+			con.PartyController.GetParties(),
 		)
 		apiRouter.Get(
 			"/parties/creator/{creatorId}",
-			pc.FindByCreatorId(),
+			con.PartyController.FindByCreatorId(),
 		)
 		apiRouter.Get(
 			"/party/{partyId}",
-			pc.FindById(),
+			con.PartyController.FindById(),
 		)
 		apiRouter.Post(
 			"/party",
-			pc.Save(),
+			con.PartyController.Save(),
 		)
-		apiRouter.Put(
+		apiRouter.With(pathObjMw).With(isOwnerMw).Put(
 			"/party/{partyId}",
-			pc.Update(),
+			con.PartyController.Update(),
+		)
+		apiRouter.With(pathObjMw).With(isOwnerMw).Delete(
+			"/party/{partyId}",
+			con.PartyController.Delete(),
+		)
+	})
+}
+
+func PartyActionsRouter(r chi.Router, con container.Container) {
+	r.Route("/", func(apiRouter chi.Router) {
+		apiRouter.Get(
+			"/party/join/{partyId}",
+			con.MemberController.Save(),
+		)
+		apiRouter.Get(
+			"/party/check/{partyId}",
+			con.MemberController.Exists(),
 		)
 		apiRouter.Delete(
-			"/party/{partyId}",
-			pc.Delete(),
+			"/party/leave/{partyId}",
+			con.MemberController.Delete(),
 		)
-
 	})
 }
 

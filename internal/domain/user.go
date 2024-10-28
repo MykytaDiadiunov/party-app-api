@@ -11,3 +11,7 @@ type User struct {
 type UpdateUserBalanceAmount struct {
 	Amount int32
 }
+
+func (u User) GetUserId() uint64 {
+	return u.Id
+}

@@ -17,3 +17,14 @@ func (u UserDto) DomainToDto(user domain.User) UserDto {
 		Points: user.Points,
 	}
 }
+
+type UsersDto struct {
+	Users []MemberDto `json:"users"`
+}
+
+func (u UsersDto) DomainToDtoCollection(domainUsers []domain.User) UsersDto {
+	memberDto := MemberDto{}
+	return UsersDto{
+		Users: memberDto.DomainToDtoCollection(domainUsers),
+	}
+}

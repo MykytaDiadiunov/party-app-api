@@ -1,7 +1,6 @@
 package container
 
 import (
-	"github.com/go-chi/jwtauth/v5"
 	"go-rest-api/internal/app"
 	"go-rest-api/internal/infra/database"
 	"go-rest-api/internal/infra/database/repositories"
@@ -9,6 +8,8 @@ import (
 	"go-rest-api/internal/infra/http/controllers"
 	"go-rest-api/internal/infra/http/middlewares"
 	"net/http"
+
+	"github.com/go-chi/jwtauth/v5"
 )
 
 type Container struct {
@@ -21,12 +22,16 @@ type Services struct {
 	app.UserService
 	app.SessionService
 	app.PartyService
+	app.MemberService
+	app.LikeService
 }
 
 type Controllers struct {
 	controllers.UserController
 	controllers.SessionController
 	controllers.PartyController
+	controllers.MemberController
+	controllers.LikeController
 }
 
 type Middleware struct {
@@ -40,15 +45,21 @@ func New() Container {
 	userRepo := repositories.NewUserRepository(db)
 	sessionRepo := repositories.NewSessionRepository(db)
 	partyRepo := repositories.NewPartyRepository(db)
+	memberRepo := repositories.NewMemberRepository(db)
+	likeRepo := repositories.NewLikeRepository(db)
 
 	imageService := filesystem.NewImageStorageService("file_storage")
 	userService := app.NewUserService(userRepo)
 	sessionService := app.NewSessionService(sessionRepo, userService, tknAuth)
 	partyService := app.NewPartyService(partyRepo, imageService, userService)
+	memberService := app.NewMemberService(memberRepo, userService, partyService)
+	likeService := app.NewLikeService(likeRepo, userService)
 
 	userController := controllers.NewUserController(userService)
 	sessionController := controllers.NewSessionController(sessionService, userService)
-	partyController := controllers.NewPartyController(partyService)
+	memberController := controllers.NewMemberController(memberService)
+	partyController := controllers.NewPartyController(partyService, memberService)
+	likeController := controllers.NewLikeController(likeService)
 
 	authMiddleware := middlewares.AuthMiddleware(tknAuth, sessionService, userService)
 
@@ -57,11 +68,15 @@ func New() Container {
 			userService,
 			sessionService,
 			partyService,
+			memberService,
+			likeService,
 		},
 		Controllers: Controllers{
 			userController,
 			sessionController,
 			partyController,
+			memberController,
+			likeController,
 		},
 		Middleware: Middleware{
 			authMiddleware,
