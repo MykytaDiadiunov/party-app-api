@@ -23,6 +23,7 @@ type Services struct {
 	app.SessionService
 	app.PartyService
 	app.MemberService
+	app.LikeService
 }
 
 type Controllers struct {
@@ -30,6 +31,7 @@ type Controllers struct {
 	controllers.SessionController
 	controllers.PartyController
 	controllers.MemberController
+	controllers.LikeController
 }
 
 type Middleware struct {
@@ -44,17 +46,20 @@ func New() Container {
 	sessionRepo := repositories.NewSessionRepository(db)
 	partyRepo := repositories.NewPartyRepository(db)
 	memberRepo := repositories.NewMemberRepository(db)
+	likeRepo := repositories.NewLikeRepository(db)
 
 	imageService := filesystem.NewImageStorageService("file_storage")
 	userService := app.NewUserService(userRepo)
 	sessionService := app.NewSessionService(sessionRepo, userService, tknAuth)
 	partyService := app.NewPartyService(partyRepo, imageService, userService)
 	memberService := app.NewMemberService(memberRepo, userService, partyService)
+	likeService := app.NewLikeService(likeRepo, userService)
 
 	userController := controllers.NewUserController(userService)
 	sessionController := controllers.NewSessionController(sessionService, userService)
 	memberController := controllers.NewMemberController(memberService)
 	partyController := controllers.NewPartyController(partyService, memberService)
+	likeController := controllers.NewLikeController(likeService)
 
 	authMiddleware := middlewares.AuthMiddleware(tknAuth, sessionService, userService)
 
@@ -64,12 +69,14 @@ func New() Container {
 			sessionService,
 			partyService,
 			memberService,
+			likeService,
 		},
 		Controllers: Controllers{
 			userController,
 			sessionController,
 			partyController,
 			memberController,
+			likeController,
 		},
 		Middleware: Middleware{
 			authMiddleware,

@@ -40,11 +40,15 @@ func CreateRouter(con container.Container) http.Handler {
 				})
 				apiRouter.Route("/user", func(apiRouter chi.Router) {
 					apiRouter.Use(con.AuthMw)
-					UserRouter(apiRouter, con.UserController)
+					UserRouter(apiRouter, con)
 				})
 				apiRouter.Route("/", func(apiRouter chi.Router) {
 					apiRouter.Use(con.AuthMw)
 					PartyRouter(apiRouter, con)
+				})
+				apiRouter.Route("/actions", func(apiRouter chi.Router) {
+					apiRouter.Use(con.AuthMw)
+					PartyActionsRouter(apiRouter, con)
 				})
 			})
 		})
@@ -79,15 +83,35 @@ func AuthRouter(r chi.Router, sc controllers.SessionController, amw func(http.Ha
 	})
 }
 
-func UserRouter(r chi.Router, uc controllers.UserController) {
+func UserRouter(r chi.Router, con container.Container) {
 	r.Route("/", func(apiRouter chi.Router) {
 		apiRouter.Get(
 			"/me",
-			uc.FindMe(),
+			con.FindMe(),
 		)
 		apiRouter.Post(
 			"/me/balance",
-			uc.UpdateMyBalance(),
+			con.UpdateMyBalance(),
+		)
+		apiRouter.Get(
+			"/me/favorite/check/{likedId}",
+			con.LikeExists(),
+		)
+		apiRouter.Get(
+			"/me/favorites",
+			con.GetFavorites(),
+		)
+		apiRouter.Get(
+			"/favorites/{likedId}",
+			con.GetByLikedUser(),
+		)
+		apiRouter.Get(
+			"/me/favorites/add/{likedId}",
+			con.SetLike(),
+		)
+		apiRouter.Delete(
+			"/me/favorites/remove/{likedId}",
+			con.DeleteLike(),
 		)
 	})
 }
@@ -120,6 +144,11 @@ func PartyRouter(r chi.Router, con container.Container) {
 			"/party/{partyId}",
 			con.PartyController.Delete(),
 		)
+	})
+}
+
+func PartyActionsRouter(r chi.Router, con container.Container) {
+	r.Route("/", func(apiRouter chi.Router) {
 		apiRouter.Get(
 			"/party/join/{partyId}",
 			con.MemberController.Save(),

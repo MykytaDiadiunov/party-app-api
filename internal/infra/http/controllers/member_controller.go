@@ -44,7 +44,7 @@ func (m MemberController) Save() http.HandlerFunc {
 
 		err = m.memberService.Exists(domainMember)
 		if err == nil {
-			BadRequest(w, errors.New("user already joined"))
+			NoContent(w, errors.New("user already joined"))
 			return
 		}
 
