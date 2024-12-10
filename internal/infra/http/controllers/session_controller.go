@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"database/sql"
 	"errors"
 	"go-rest-api/internal/app"
 	"go-rest-api/internal/domain"
@@ -46,6 +47,11 @@ func (c SessionController) Login() http.HandlerFunc {
 		}
 		user, token, err := c.sessionServ.Login(domainUser)
 		if err != nil {
+			if err == sql.ErrNoRows {
+				NotFound(w, err)
+				return
+			}
+
 			InternalServerError(w, err)
 			return
 		}

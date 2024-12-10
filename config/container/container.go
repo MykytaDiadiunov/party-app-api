@@ -58,7 +58,7 @@ func New() Container {
 	userController := controllers.NewUserController(userService)
 	sessionController := controllers.NewSessionController(sessionService, userService)
 	memberController := controllers.NewMemberController(memberService)
-	partyController := controllers.NewPartyController(partyService, memberService)
+	partyController := controllers.NewPartyController(partyService, memberService, userService)
 	likeController := controllers.NewLikeController(likeService)
 
 	authMiddleware := middlewares.AuthMiddleware(tknAuth, sessionService, userService)

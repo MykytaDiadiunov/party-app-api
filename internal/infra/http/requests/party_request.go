@@ -8,7 +8,7 @@ import (
 type CreatePartyRequest struct {
 	Title       string    `json:"title" validate:"required"`
 	Description string    `json:"description" validate:"required"`
-	Image       string    `json:"image" validate:"required"`
+	Image       string    `json:"image"`
 	Price       int32     `json:"price" validate:"required"`
 	StartDate   time.Time `json:"startDate" validate:"required"`
 }
@@ -26,7 +26,7 @@ func (cpr CreatePartyRequest) ToDomainModel() (interface{}, error) {
 type UpdatePartyRequest struct {
 	Title       string    `json:"title" validate:"required"`
 	Description string    `json:"description" validate:"required"`
-	Image       string    `json:"image" validate:"required"`
+	Image       string    `json:"image"`
 	StartDate   time.Time `json:"startDate" validate:"required"`
 }
 

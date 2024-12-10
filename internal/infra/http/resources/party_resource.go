@@ -12,10 +12,10 @@ type PartyDto struct {
 	Image       string    `json:"image"`
 	Price       int32     `json:"price"`
 	StartDate   time.Time `json:"startDate"`
-	CreatorId   uint64    `json:"creatorId"`
+	CreatorId   UserDto   `json:"creatorId"`
 }
 
-func (p PartyDto) DomainToDto(domainParty domain.Party) PartyDto {
+func (p PartyDto) DomainToDto(domainParty domain.Party, userDto UserDto) PartyDto {
 	return PartyDto{
 		Id:          domainParty.Id,
 		Title:       domainParty.Title,
@@ -23,31 +23,7 @@ func (p PartyDto) DomainToDto(domainParty domain.Party) PartyDto {
 		Image:       domainParty.Image,
 		Price:       domainParty.Price,
 		StartDate:   domainParty.StartDate,
-		CreatorId:   domainParty.CreatorId,
-	}
-}
-
-type PartyWithMembersDto struct {
-	Id          uint64      `json:"id"`
-	Title       string      `json:"title"`
-	Description string      `json:"description"`
-	Image       string      `json:"image"`
-	Price       int32       `json:"price"`
-	StartDate   time.Time   `json:"startDate"`
-	CreatorId   uint64      `json:"creatorId"`
-	Members     []MemberDto `json:"members"`
-}
-
-func (p PartyWithMembersDto) DomainPartyWithMembersToDto(domainParty domain.Party, members []MemberDto) PartyWithMembersDto {
-	return PartyWithMembersDto{
-		Id:          domainParty.Id,
-		Title:       domainParty.Title,
-		Description: domainParty.Description,
-		Image:       domainParty.Image,
-		Price:       domainParty.Price,
-		StartDate:   domainParty.StartDate,
-		CreatorId:   domainParty.CreatorId,
-		Members:     members,
+		CreatorId:   userDto,
 	}
 }
 
@@ -58,11 +34,11 @@ type PartiesDto struct {
 	LastPage    int32      `json:"lastPage"`
 }
 
-func (p PartyDto) DomainToDtoCollection(domainParties domain.Parties) PartiesDto {
+func (p PartyDto) DomainToDtoCollection(domainParties domain.Parties, usersDto []UserDto) PartiesDto {
 	result := make([]PartyDto, len(domainParties.Parties))
 
 	for i := range domainParties.Parties {
-		result[i] = p.DomainToDto(domainParties.Parties[i])
+		result[i] = p.DomainToDto(domainParties.Parties[i], usersDto[i])
 	}
 
 	return PartiesDto{
@@ -70,5 +46,29 @@ func (p PartyDto) DomainToDtoCollection(domainParties domain.Parties) PartiesDto
 		Total:       domainParties.Total,
 		CurrentPage: domainParties.CurrentPage,
 		LastPage:    domainParties.LastPage,
+	}
+}
+
+type PartyWithMembersDto struct {
+	Id          uint64      `json:"id"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	Image       string      `json:"image"`
+	Price       int32       `json:"price"`
+	StartDate   time.Time   `json:"startDate"`
+	CreatorId   UserDto     `json:"creatorId"`
+	Members     []MemberDto `json:"members"`
+}
+
+func (p PartyWithMembersDto) DomainPartyWithMembersToDto(domainParty domain.Party, userDto UserDto, members []MemberDto) PartyWithMembersDto {
+	return PartyWithMembersDto{
+		Id:          domainParty.Id,
+		Title:       domainParty.Title,
+		Description: domainParty.Description,
+		Image:       domainParty.Image,
+		Price:       domainParty.Price,
+		StartDate:   domainParty.StartDate,
+		CreatorId:   userDto,
+		Members:     members,
 	}
 }
