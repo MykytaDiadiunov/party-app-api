@@ -15,12 +15,14 @@ import (
 type PartyController struct {
 	partyService  app.PartyService
 	memberService app.MemberService
+	userService   app.UserService
 }
 
-func NewPartyController(partyServ app.PartyService, memberService app.MemberService) PartyController {
+func NewPartyController(partyServ app.PartyService, memberService app.MemberService, userService app.UserService) PartyController {
 	return PartyController{
 		partyService:  partyServ,
 		memberService: memberService,
+		userService:   userService,
 	}
 }
 
@@ -28,6 +30,7 @@ func (p PartyController) Save() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		creatorUser := r.Context().Value(UserKey).(domain.User)
 		domainParty, err := requests.Bind(r, requests.CreatePartyRequest{}, domain.Party{})
+
 		if err != nil {
 			BadRequest(w, err)
 			return
@@ -57,10 +60,17 @@ func (p PartyController) Save() http.HandlerFunc {
 			return
 		}
 
+		domainUser, err := p.userService.FindById(domainParty.CreatorId)
+		if err != nil {
+			InternalServerError(w, err)
+			return
+		}
+
+		userDto := resources.UserDto{}
 		memberDto := resources.MemberDto{}
 		partyDto := resources.PartyWithMembersDto{}
 
-		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, memberDto.DomainToDtoCollection(domainPartyMembers)))
+		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
 	}
 }
 
@@ -89,9 +99,16 @@ func (p PartyController) FindById() http.HandlerFunc {
 			return
 		}
 
+		domainUser, err := p.userService.FindById(domainParty.CreatorId)
+		if err != nil {
+			InternalServerError(w, err)
+			return
+		}
+
+		userDto := resources.UserDto{}
 		memberDto := resources.MemberDto{}
 		partyDto := resources.PartyWithMembersDto{}
-		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, memberDto.DomainToDtoCollection(domainPartyMembers)))
+		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
 	}
 }
 
@@ -135,9 +152,16 @@ func (p PartyController) Update() http.HandlerFunc {
 			return
 		}
 
+		domainUser, err := p.userService.FindById(domainParty.CreatorId)
+		if err != nil {
+			InternalServerError(w, err)
+			return
+		}
+
+		userDto := resources.UserDto{}
 		memberDto := resources.MemberDto{}
 		partyDto := resources.PartyWithMembersDto{}
-		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, memberDto.DomainToDtoCollection(domainPartyMembers)))
+		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
 	}
 }
 
@@ -186,8 +210,21 @@ func (p PartyController) GetParties() http.HandlerFunc {
 			NotFound(w, err)
 			return
 		}
+
+		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+
+		for i := range domainParties.Parties {
+			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
+			if err != nil {
+				InternalServerError(w, err)
+			}
+
+			userDto := resources.UserDto{}
+			usersDto[i] = userDto.DomainToDto(domainUser)
+		}
+
 		partyDto := resources.PartyDto{}
-		Success(w, partyDto.DomainToDtoCollection(domainParties))
+		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
 	}
 }
 
@@ -214,7 +251,20 @@ func (p PartyController) FindByCreatorId() http.HandlerFunc {
 			NotFound(w, err)
 			return
 		}
+
+		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+
+		for i := range domainParties.Parties {
+			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
+			if err != nil {
+				InternalServerError(w, err)
+			}
+
+			userDto := resources.UserDto{}
+			usersDto[i] = userDto.DomainToDto(domainUser)
+		}
+
 		partyDto := resources.PartyDto{}
-		Success(w, partyDto.DomainToDtoCollection(domainParties))
+		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
 	}
 }

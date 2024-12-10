@@ -89,6 +89,10 @@ func UserRouter(r chi.Router, con container.Container) {
 			"/me",
 			con.FindMe(),
 		)
+		apiRouter.Get(
+			"/{userId}",
+			con.FindUserById(),
+		)
 		apiRouter.Post(
 			"/me/balance",
 			con.UpdateMyBalance(),

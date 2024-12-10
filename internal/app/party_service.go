@@ -86,16 +86,18 @@ func (p partyService) Save(party domain.Party) (domain.Party, error) {
 		return domain.Party{}, err
 	}
 
-	partyWithNormalImg, err := p.Update(createdParty)
-	if err != nil {
-		err := p.Delete(createdParty.Id)
+	if party.Image != "" {
+		partyWithNormalImg, err := p.Update(createdParty)
 		if err != nil {
+			err := p.Delete(createdParty.Id)
+			if err != nil {
+				return domain.Party{}, err
+			}
 			return domain.Party{}, err
 		}
-		return domain.Party{}, err
+		return partyWithNormalImg, nil
 	}
-
-	return partyWithNormalImg, nil
+	return createdParty, nil
 }
 
 func (p partyService) Update(party domain.Party) (domain.Party, error) {
@@ -109,7 +111,7 @@ func (p partyService) Update(party domain.Party) (domain.Party, error) {
 		return domain.Party{}, err
 	}
 
-	if !imageExist {
+	if !imageExist && currentParty.Image != "" {
 		id := strconv.FormatUint(party.Id, 10)
 		creatorId := strconv.FormatUint(currentParty.CreatorId, 10)
 		imageFileName := "party_" + id + "_by_user_" + creatorId + ".jpg"

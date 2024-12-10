@@ -1,11 +1,15 @@
 package controllers
 
 import (
+	"errors"
 	"go-rest-api/internal/app"
 	"go-rest-api/internal/domain"
 	"go-rest-api/internal/infra/http/requests"
 	"go-rest-api/internal/infra/http/resources"
 	"net/http"
+	"strconv"
+
+	"github.com/go-chi/chi/v5"
 )
 
 type UserController struct {
@@ -32,6 +36,29 @@ func (c UserController) UpdateMyBalance() http.HandlerFunc {
 			return
 		}
 		Success(w, resources.UserDto{}.DomainToDto(updatedUser))
+	}
+}
+
+func (c UserController) FindUserById() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		userId := chi.URLParam(r, "userId")
+		if userId == "" {
+			BadRequest(w, errors.New("invalid userId"))
+			return
+		}
+
+		numericUserId, err := strconv.ParseUint(userId, 10, 64)
+		if err != nil {
+			BadRequest(w, err)
+			return
+		}
+		user, err := c.userService.FindById(numericUserId)
+
+		if err != nil {
+			NotFound(w, err)
+			return
+		}
+		Success(w, resources.UserDto{}.DomainToDto(user))
 	}
 }
 
