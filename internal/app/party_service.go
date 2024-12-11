@@ -111,7 +111,7 @@ func (p partyService) Update(party domain.Party) (domain.Party, error) {
 		return domain.Party{}, err
 	}
 
-	if !imageExist && currentParty.Image != "" {
+	if !imageExist {
 		id := strconv.FormatUint(party.Id, 10)
 		creatorId := strconv.FormatUint(currentParty.CreatorId, 10)
 		imageFileName := "party_" + id + "_by_user_" + creatorId + ".jpg"

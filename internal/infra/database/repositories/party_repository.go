@@ -35,7 +35,7 @@ func NewPartyRepository(db *sql.DB) PartyRepository {
 
 func (p partyRepository) FindById(id uint64) (domain.Party, error) {
 	partyModel := party{}
-	sqlCommand := `SELECT * FROM parties WHERE id = $1;`
+	sqlCommand := `SELECT id, title, description, image, price, start_date, creator_id FROM parties WHERE id = $1;`
 	err := p.db.QueryRow(
 		sqlCommand,
 		id,
@@ -64,7 +64,7 @@ func (p partyRepository) GetParties(page, limit int32) (domain.Parties, error) {
 
 	offset := (page - 1) * limit
 
-	sqlCommand := `SELECT * FROM parties LIMIT $1 OFFSET $2;`
+	sqlCommand := `SELECT id, title, description, image, price, start_date, creator_id FROM parties LIMIT $1 OFFSET $2;`
 	rows, err := p.db.Query(sqlCommand, limit, offset)
 	if err != nil {
 		return domain.Parties{}, err
