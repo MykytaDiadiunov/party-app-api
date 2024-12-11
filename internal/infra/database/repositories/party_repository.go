@@ -19,6 +19,7 @@ type party struct {
 type PartyRepository interface {
 	FindById(id uint64) (domain.Party, error)
 	FindByCreatorId(creatorId uint64, page, limit int32) (domain.Parties, error)
+	FindPartiesByLikerId(likerId uint64, page, limit int32) (domain.Parties, error)
 	GetParties(page, limit int32) (domain.Parties, error)
 	Save(party domain.Party) (domain.Party, error)
 	Update(party domain.Party) (domain.Party, error)
@@ -54,6 +55,118 @@ func (p partyRepository) FindById(id uint64) (domain.Party, error) {
 	return p.modelToDomain(partyModel), nil
 }
 
+func (p partyRepository) FindByCreatorId(creatorId uint64, page, limit int32) (domain.Parties, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	var parties []domain.Party
+
+	sqlCommand := `SELECT id, title, description, image, price, start_date, creator_id FROM parties 
+	WHERE creator_id = $1 ORDER BY created_date DESC LIMIT $2 OFFSET $3;`
+	rows, err := p.db.Query(sqlCommand, creatorId, limit, offset)
+	if err != nil {
+		return domain.Parties{}, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		partyModel := party{}
+		err := rows.Scan(
+			&partyModel.Id,
+			&partyModel.Title,
+			&partyModel.Description,
+			&partyModel.Image,
+			&partyModel.Price,
+			&partyModel.StartDate,
+			&partyModel.CreatorId,
+		)
+		if err != nil {
+			return domain.Parties{}, err
+		}
+		parties = append(parties, p.modelToDomain(partyModel))
+	}
+
+	var total uint64
+	totalSqlCommand := `SELECT COUNT(*) FROM parties WHERE creator_id = $1;`
+	err = p.db.QueryRow(totalSqlCommand, creatorId).Scan(&total)
+	if err != nil {
+		return domain.Parties{}, err
+	}
+	var pages int32
+	if total > 0 {
+		pages = (int32(total) + limit - 1) / limit
+	}
+
+	return domain.Parties{
+		Parties:     parties,
+		Total:       total,
+		CurrentPage: page,
+		LastPage:    pages,
+	}, nil
+}
+
+func (p partyRepository) FindPartiesByLikerId(likerId uint64, page, limit int32) (domain.Parties, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 {
+		limit = 10
+	}
+
+	offset := (page - 1) * limit
+
+	sqlCommand := `select distinct parties.id, parties.title, parties.description, parties.image, parties.price, parties.start_date, parties.creator_id 
+	from likes inner join parties on parties.creator_id = likes.liked_id where likes.liker_id = $1 LIMIT $2 OFFSET $3;`
+	rows, err := p.db.Query(sqlCommand, likerId, limit, offset)
+	if err != nil {
+		return domain.Parties{}, err
+	}
+
+	defer rows.Close()
+	var parties []domain.Party
+	for rows.Next() {
+		var party party
+		err := rows.Scan(
+			&party.Id,
+			&party.Title,
+			&party.Description,
+			&party.Image,
+			&party.Price,
+			&party.StartDate,
+			&party.CreatorId,
+		)
+		if err != nil {
+			return domain.Parties{}, err
+		}
+		parties = append(parties, p.modelToDomain(party))
+	}
+
+	var total uint64
+	totalSqlCommand := `SELECT COUNT(DISTINCT parties.id) 
+	FROM likes INNER JOIN parties ON parties.creator_id = likes.liked_id WHERE likes.liker_id = $1;`
+	err = p.db.QueryRow(totalSqlCommand, likerId).Scan(&total)
+	if err != nil {
+		return domain.Parties{}, err
+	}
+	var pages int32
+	if total > 0 {
+		pages = (int32(total) + limit - 1) / limit
+	}
+
+	return domain.Parties{
+		Parties:     parties,
+		Total:       total,
+		CurrentPage: page,
+		LastPage:    pages,
+	}, nil
+}
+
 func (p partyRepository) GetParties(page, limit int32) (domain.Parties, error) {
 	if page < 1 {
 		page = 1
@@ -64,7 +177,7 @@ func (p partyRepository) GetParties(page, limit int32) (domain.Parties, error) {
 
 	offset := (page - 1) * limit
 
-	sqlCommand := `SELECT id, title, description, image, price, start_date, creator_id FROM parties LIMIT $1 OFFSET $2;`
+	sqlCommand := `SELECT id, title, description, image, price, start_date, creator_id FROM parties ORDER BY created_date DESC LIMIT $1 OFFSET $2`
 	rows, err := p.db.Query(sqlCommand, limit, offset)
 	if err != nil {
 		return domain.Parties{}, err
@@ -107,62 +220,9 @@ func (p partyRepository) GetParties(page, limit int32) (domain.Parties, error) {
 	}, nil
 }
 
-func (p partyRepository) FindByCreatorId(creatorId uint64, page, limit int32) (domain.Parties, error) {
-	if page < 1 {
-		page = 1
-	}
-	if limit < 1 {
-		limit = 10
-	}
-
-	offset := (page - 1) * limit
-
-	var parties []domain.Party
-
-	sqlCommand := `SELECT * FROM parties WHERE creator_id = $1 LIMIT $2 OFFSET $3;`
-	rows, err := p.db.Query(sqlCommand, creatorId, limit, offset)
-	if err != nil {
-		return domain.Parties{}, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		partyModel := party{}
-		err := rows.Scan(
-			&partyModel.Id,
-			&partyModel.Title,
-			&partyModel.Description,
-			&partyModel.Image,
-			&partyModel.Price,
-			&partyModel.StartDate,
-			&partyModel.CreatorId,
-		)
-		if err != nil {
-			return domain.Parties{}, err
-		}
-		parties = append(parties, p.modelToDomain(partyModel))
-	}
-	var total uint64
-	totalSqlCommand := `SELECT COUNT(*) FROM parties WHERE creator_id = $1;`
-	err = p.db.QueryRow(totalSqlCommand, creatorId).Scan(&total)
-	if err != nil {
-		return domain.Parties{}, err
-	}
-	var pages int32
-	if total > 0 {
-		pages = (int32(total) + limit - 1) / limit
-	}
-
-	return domain.Parties{
-		Parties:     parties,
-		Total:       total,
-		CurrentPage: page,
-		LastPage:    pages,
-	}, nil
-}
-
 func (p partyRepository) Save(party domain.Party) (domain.Party, error) {
 	partyModel := p.domainToModel(party)
+
 	sqlCommand := `INSERT INTO parties(
                   title, 
                   description, 
@@ -181,7 +241,6 @@ func (p partyRepository) Save(party domain.Party) (domain.Party, error) {
 		partyModel.StartDate,
 		partyModel.CreatorId,
 	).Scan(&partyModel.Id)
-
 	if err != nil {
 		return domain.Party{}, err
 	}
