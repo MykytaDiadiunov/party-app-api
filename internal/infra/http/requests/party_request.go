@@ -26,7 +26,7 @@ func (cpr CreatePartyRequest) ToDomainModel() (interface{}, error) {
 type UpdatePartyRequest struct {
 	Title       string    `json:"title" validate:"required"`
 	Description string    `json:"description" validate:"required"`
-	Image       string    `json:"image"`
+	Image       string    `json:"image" validate:"required"`
 	StartDate   time.Time `json:"startDate" validate:"required"`
 }
 

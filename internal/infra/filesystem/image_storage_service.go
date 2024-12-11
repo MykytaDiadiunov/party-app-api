@@ -56,7 +56,7 @@ func (s imageStorageService) FileIsExist(filename string) (bool, error) {
 	}
 
 	for _, image := range images {
-		if image == "file_storage/parties/"+filename {
+		if image == "file_storage/"+filename {
 			return true, nil
 		}
 	}

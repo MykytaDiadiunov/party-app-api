@@ -13,6 +13,7 @@ type PartyService interface {
 	Find(id uint64) (domain.Party, error)
 	FindById(id uint64) (domain.Party, error)
 	FindByCreatorId(creatorId uint64, page, limit int32) (domain.Parties, error)
+	FindPartiesByLikerId(likerId uint64, page, limit int32) (domain.Parties, error)
 	GetParties(page, limit int32) (domain.Parties, error)
 	Save(party domain.Party) (domain.Party, error)
 	Update(party domain.Party) (domain.Party, error)
@@ -51,6 +52,14 @@ func (p partyService) FindById(id uint64) (domain.Party, error) {
 
 func (p partyService) FindByCreatorId(creatorId uint64, page, limit int32) (domain.Parties, error) {
 	parties, err := p.partyRepo.FindByCreatorId(creatorId, page, limit)
+	if err != nil {
+		return domain.Parties{}, err
+	}
+	return parties, nil
+}
+
+func (p partyService) FindPartiesByLikerId(likerId uint64, page, limit int32) (domain.Parties, error) {
+	parties, err := p.partyRepo.FindPartiesByLikerId(likerId, page, limit)
 	if err != nil {
 		return domain.Parties{}, err
 	}
@@ -111,7 +120,7 @@ func (p partyService) Update(party domain.Party) (domain.Party, error) {
 		return domain.Party{}, err
 	}
 
-	if !imageExist && currentParty.Image != "" {
+	if !imageExist {
 		id := strconv.FormatUint(party.Id, 10)
 		creatorId := strconv.FormatUint(currentParty.CreatorId, 10)
 		imageFileName := "party_" + id + "_by_user_" + creatorId + ".jpg"

@@ -26,6 +26,164 @@ func NewPartyController(partyServ app.PartyService, memberService app.MemberServ
 	}
 }
 
+func (p PartyController) FindById() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		partyId := chi.URLParam(r, "partyId")
+		if partyId == "" {
+			BadRequest(w, errors.New("invalid partyId"))
+			return
+		}
+		numericPartyId, err := strconv.ParseUint(partyId, 10, 64)
+		if err != nil {
+			BadRequest(w, errors.New("invalid partyId"))
+			return
+		}
+
+		domainParty, err := p.partyService.FindById(numericPartyId)
+		if err != nil {
+			NotFound(w, err)
+			return
+		}
+
+		domainPartyMembers, err := p.memberService.FindByPartyId(domainParty.Id)
+		if err != nil {
+			InternalServerError(w, err)
+			return
+		}
+
+		domainUser, err := p.userService.FindById(domainParty.CreatorId)
+		if err != nil {
+			InternalServerError(w, err)
+			return
+		}
+
+		userDto := resources.UserDto{}
+		memberDto := resources.MemberDto{}
+		partyDto := resources.PartyWithMembersDto{}
+		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
+	}
+}
+
+func (p PartyController) FindByCreatorId() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		creatorId := chi.URLParam(r, "creatorId")
+		page := r.URL.Query().Get("page")
+		limit := r.URL.Query().Get("limit")
+		if creatorId == "" || page == "" || limit == "" {
+			BadRequest(w, errors.New("invalid partyId"))
+			return
+		}
+		numericCreatorId, err := strconv.ParseUint(creatorId, 10, 64)
+		numericPage, pErr := strconv.ParseInt(page, 10, 32)
+		numericLimit, lErr := strconv.ParseInt(limit, 10, 32)
+
+		if err != nil || pErr != nil || lErr != nil {
+			BadRequest(w, errors.New("invalid partyId"))
+			return
+		}
+
+		domainParties, err := p.partyService.FindByCreatorId(numericCreatorId, int32(numericPage), int32(numericLimit))
+		if err != nil {
+			NotFound(w, err)
+			return
+		}
+
+		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+
+		for i := range domainParties.Parties {
+			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
+			if err != nil {
+				InternalServerError(w, err)
+			}
+
+			userDto := resources.UserDto{}
+			usersDto[i] = userDto.DomainToDto(domainUser)
+		}
+
+		partyDto := resources.PartyDto{}
+		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
+	}
+}
+
+func (p PartyController) GetPartiesByFavoriteUsers() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		likerUser := r.Context().Value(UserKey).(domain.User)
+		page := r.URL.Query().Get("page")
+		limit := r.URL.Query().Get("limit")
+		if page == "" || limit == "" {
+			BadRequest(w, errors.New("invalid query"))
+			return
+		}
+
+		numericPage, pErr := strconv.ParseInt(page, 10, 32)
+		numericLimit, lErr := strconv.ParseInt(limit, 10, 32)
+		if pErr != nil || lErr != nil {
+			BadRequest(w, errors.New("invalid query"))
+			return
+		}
+
+		domainParties, err := p.partyService.FindPartiesByLikerId(likerUser.Id, int32(numericPage), int32(numericLimit))
+		if err != nil {
+			NotFound(w, err)
+			return
+		}
+
+		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+
+		for i := range domainParties.Parties {
+			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
+			if err != nil {
+				InternalServerError(w, err)
+			}
+
+			userDto := resources.UserDto{}
+			usersDto[i] = userDto.DomainToDto(domainUser)
+		}
+
+		partyDto := resources.PartyDto{}
+		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
+	}
+}
+
+func (p PartyController) GetParties() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		page := r.URL.Query().Get("page")
+		limit := r.URL.Query().Get("limit")
+		if page == "" || limit == "" {
+			BadRequest(w, errors.New("invalid page or limit"))
+			return
+		}
+		numericPage, pErr := strconv.ParseInt(page, 10, 32)
+		numericLimit, lErr := strconv.ParseInt(limit, 10, 32)
+
+		if pErr != nil || lErr != nil {
+			BadRequest(w, errors.New("invalid page or limit"))
+			return
+		}
+
+		domainParties, err := p.partyService.GetParties(int32(numericPage), int32(numericLimit))
+		if err != nil {
+			NotFound(w, err)
+			return
+		}
+
+		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+
+		for i := range domainParties.Parties {
+			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
+			if err != nil {
+				InternalServerError(w, err)
+			}
+
+			userDto := resources.UserDto{}
+			usersDto[i] = userDto.DomainToDto(domainUser)
+		}
+
+		partyDto := resources.PartyDto{}
+		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
+	}
+}
+
 func (p PartyController) Save() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		creatorUser := r.Context().Value(UserKey).(domain.User)
@@ -70,44 +228,6 @@ func (p PartyController) Save() http.HandlerFunc {
 		memberDto := resources.MemberDto{}
 		partyDto := resources.PartyWithMembersDto{}
 
-		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
-	}
-}
-
-func (p PartyController) FindById() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		partyId := chi.URLParam(r, "partyId")
-		if partyId == "" {
-			BadRequest(w, errors.New("invalid partyId"))
-			return
-		}
-		numericPartyId, err := strconv.ParseUint(partyId, 10, 64)
-		if err != nil {
-			BadRequest(w, errors.New("invalid partyId"))
-			return
-		}
-
-		domainParty, err := p.partyService.FindById(numericPartyId)
-		if err != nil {
-			NotFound(w, err)
-			return
-		}
-
-		domainPartyMembers, err := p.memberService.FindByPartyId(domainParty.Id)
-		if err != nil {
-			InternalServerError(w, err)
-			return
-		}
-
-		domainUser, err := p.userService.FindById(domainParty.CreatorId)
-		if err != nil {
-			InternalServerError(w, err)
-			return
-		}
-
-		userDto := resources.UserDto{}
-		memberDto := resources.MemberDto{}
-		partyDto := resources.PartyWithMembersDto{}
 		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
 	}
 }
@@ -186,85 +306,5 @@ func (p PartyController) Delete() http.HandlerFunc {
 		}
 
 		Ok(w)
-	}
-}
-
-func (p PartyController) GetParties() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		page := r.URL.Query().Get("page")
-		limit := r.URL.Query().Get("limit")
-		if page == "" || limit == "" {
-			BadRequest(w, errors.New("invalid page or limit"))
-			return
-		}
-		numericPage, pErr := strconv.ParseInt(page, 10, 32)
-		numericLimit, lErr := strconv.ParseInt(limit, 10, 32)
-
-		if pErr != nil || lErr != nil {
-			BadRequest(w, errors.New("invalid page or limit"))
-			return
-		}
-
-		domainParties, err := p.partyService.GetParties(int32(numericPage), int32(numericLimit))
-		if err != nil {
-			NotFound(w, err)
-			return
-		}
-
-		usersDto := make([]resources.UserDto, len(domainParties.Parties))
-
-		for i := range domainParties.Parties {
-			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
-			if err != nil {
-				InternalServerError(w, err)
-			}
-
-			userDto := resources.UserDto{}
-			usersDto[i] = userDto.DomainToDto(domainUser)
-		}
-
-		partyDto := resources.PartyDto{}
-		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
-	}
-}
-
-func (p PartyController) FindByCreatorId() http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		creatorId := chi.URLParam(r, "creatorId")
-		page := r.URL.Query().Get("page")
-		limit := r.URL.Query().Get("limit")
-		if creatorId == "" || page == "" || limit == "" {
-			BadRequest(w, errors.New("invalid partyId"))
-			return
-		}
-		numericCreatorId, err := strconv.ParseUint(creatorId, 10, 64)
-		numericPage, pErr := strconv.ParseInt(page, 10, 32)
-		numericLimit, lErr := strconv.ParseInt(limit, 10, 32)
-
-		if err != nil || pErr != nil || lErr != nil {
-			BadRequest(w, errors.New("invalid partyId"))
-			return
-		}
-
-		domainParties, err := p.partyService.FindByCreatorId(numericCreatorId, int32(numericPage), int32(numericLimit))
-		if err != nil {
-			NotFound(w, err)
-			return
-		}
-
-		usersDto := make([]resources.UserDto, len(domainParties.Parties))
-
-		for i := range domainParties.Parties {
-			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
-			if err != nil {
-				InternalServerError(w, err)
-			}
-
-			userDto := resources.UserDto{}
-			usersDto[i] = userDto.DomainToDto(domainUser)
-		}
-
-		partyDto := resources.PartyDto{}
-		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
 	}
 }

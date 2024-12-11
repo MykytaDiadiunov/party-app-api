@@ -98,23 +98,27 @@ func UserRouter(r chi.Router, con container.Container) {
 			con.UpdateMyBalance(),
 		)
 		apiRouter.Get(
+			"/me/favorite/users",
+			con.GetFavorites(),
+		)
+		apiRouter.Get(
+			"/me/favorite/users/parties",
+			con.GetPartiesByFavoriteUsers(),
+		)
+		apiRouter.Get(
 			"/me/favorite/check/{likedId}",
 			con.LikeExists(),
 		)
 		apiRouter.Get(
-			"/me/favorites",
-			con.GetFavorites(),
-		)
-		apiRouter.Get(
-			"/favorites/{likedId}",
+			"/favorite/{likedId}",
 			con.GetByLikedUser(),
 		)
 		apiRouter.Get(
-			"/me/favorites/add/{likedId}",
+			"/me/favorite/add/{likedId}",
 			con.SetLike(),
 		)
 		apiRouter.Delete(
-			"/me/favorites/remove/{likedId}",
+			"/me/favorite/remove/{likedId}",
 			con.DeleteLike(),
 		)
 	})
