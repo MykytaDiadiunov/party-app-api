@@ -37,6 +37,11 @@ func (l LikeController) SetLike() http.HandlerFunc {
 			return
 		}
 
+		if likerUser.Id == numericLikedUserId {
+			BadRequest(w, errors.New("you can't like yourself"))
+			return
+		}
+
 		domainLike := domain.Like{
 			LikedId: numericLikedUserId,
 			LikerId: likerUser.Id,

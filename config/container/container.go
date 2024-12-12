@@ -57,7 +57,7 @@ func New() Container {
 
 	userController := controllers.NewUserController(userService)
 	sessionController := controllers.NewSessionController(sessionService, userService)
-	memberController := controllers.NewMemberController(memberService)
+	memberController := controllers.NewMemberController(memberService, partyService)
 	partyController := controllers.NewPartyController(partyService, memberService, userService)
 	likeController := controllers.NewLikeController(likeService)
 

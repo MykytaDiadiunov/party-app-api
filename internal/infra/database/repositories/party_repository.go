@@ -121,8 +121,9 @@ func (p partyRepository) FindPartiesByLikerId(likerId uint64, page, limit int32)
 
 	offset := (page - 1) * limit
 
-	sqlCommand := `select distinct parties.id, parties.title, parties.description, parties.image, parties.price, parties.start_date, parties.creator_id 
-	from likes inner join parties on parties.creator_id = likes.liked_id where likes.liker_id = $1 LIMIT $2 OFFSET $3;`
+	sqlCommand := `select distinct 
+	parties.id, parties.title, parties.description, parties.image, parties.price, parties.start_date, parties.creator_id, parties.created_date
+	from likes inner join parties on parties.creator_id = likes.liked_id where likes.liker_id = $1 order by parties.created_date desc LIMIT $2 OFFSET $3;`
 	rows, err := p.db.Query(sqlCommand, likerId, limit, offset)
 	if err != nil {
 		return domain.Parties{}, err
@@ -130,6 +131,7 @@ func (p partyRepository) FindPartiesByLikerId(likerId uint64, page, limit int32)
 
 	defer rows.Close()
 	var parties []domain.Party
+	var cork any
 	for rows.Next() {
 		var party party
 		err := rows.Scan(
@@ -140,6 +142,7 @@ func (p partyRepository) FindPartiesByLikerId(likerId uint64, page, limit int32)
 			&party.Price,
 			&party.StartDate,
 			&party.CreatorId,
+			&cork,
 		)
 		if err != nil {
 			return domain.Parties{}, err
