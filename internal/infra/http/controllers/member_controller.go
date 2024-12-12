@@ -13,17 +13,19 @@ import (
 
 type MemberController struct {
 	memberService app.MemberService
+	partyServiece app.PartyService
 }
 
-func NewMemberController(memberServ app.MemberService) MemberController {
+func NewMemberController(memberServ app.MemberService, partyService app.PartyService) MemberController {
 	return MemberController{
 		memberService: memberServ,
+		partyServiece: partyService,
 	}
 }
 
 func (m MemberController) Save() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cretorUser := r.Context().Value(UserKey).(domain.User)
+		domainUser := r.Context().Value(UserKey).(domain.User)
 		partyId := chi.URLParam(r, "partyId")
 
 		if partyId == "" {
@@ -37,9 +39,19 @@ func (m MemberController) Save() http.HandlerFunc {
 			return
 		}
 
+		domainParty, err := m.partyServiece.FindById(numericPartyId)
+		if err != nil {
+			BadRequest(w, err)
+			return
+		}
+		if domainParty.CreatorId == domainUser.Id {
+			BadRequest(w, errors.New("owner can't join to party"))
+			return
+		}
+
 		domainMember := domain.Member{
 			PartyId: numericPartyId,
-			UserId:  cretorUser.Id,
+			UserId:  domainUser.Id,
 		}
 
 		err = m.memberService.Exists(domainMember)
@@ -60,7 +72,7 @@ func (m MemberController) Save() http.HandlerFunc {
 
 func (m MemberController) Exists() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cretorUser := r.Context().Value(UserKey).(domain.User)
+		domainUser := r.Context().Value(UserKey).(domain.User)
 		partyId := chi.URLParam(r, "partyId")
 
 		if partyId == "" {
@@ -76,7 +88,7 @@ func (m MemberController) Exists() http.HandlerFunc {
 
 		domainMember := domain.Member{
 			PartyId: numericPartyId,
-			UserId:  cretorUser.Id,
+			UserId:  domainUser.Id,
 		}
 
 		err = m.memberService.Exists(domainMember)
@@ -91,7 +103,7 @@ func (m MemberController) Exists() http.HandlerFunc {
 
 func (m MemberController) Delete() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		cretorUser := r.Context().Value(UserKey).(domain.User)
+		domainUser := r.Context().Value(UserKey).(domain.User)
 		partyId := chi.URLParam(r, "partyId")
 
 		if partyId == "" {
@@ -107,7 +119,7 @@ func (m MemberController) Delete() http.HandlerFunc {
 
 		domainMember := domain.Member{
 			PartyId: numericPartyId,
-			UserId:  cretorUser.Id,
+			UserId:  domainUser.Id,
 		}
 
 		err = m.memberService.Exists(domainMember)
