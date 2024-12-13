@@ -19,8 +19,20 @@ type imageStorageService struct {
 }
 
 func NewImageStorageService(location string) ImageStorageService {
+	rootDir, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Failed to get working directory: %v", err)
+	}
+
+	absLocation := path.Join(rootDir, location)
+
+	err = os.MkdirAll(absLocation, os.ModePerm)
+	if err != nil {
+		log.Fatalf("Failed to create directory: %v", err)
+	}
+
 	return imageStorageService{
-		loc: location,
+		loc: absLocation,
 	}
 }
 
