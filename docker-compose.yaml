@@ -9,7 +9,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${DB_PORT}:${DB_PORT}"
 
   app:
     build:
@@ -23,7 +23,7 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: restapi_dev
-      DB_PORT: 5432
+      DB_PORT: ${DB_PORT}
     volumes:
       - .:/app
     depends_on:
@@ -35,7 +35,7 @@ services:
     entrypoint: [
       "migrate",
       "-path", "/migrations",
-      "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:5432/restapi_dev?sslmode=disable",
+      "-database", "postgres://${DB_USER}:${DB_PASSWORD}@db:${DB_PORT}/restapi_dev?sslmode=disable",
       "up"
     ]
     volumes:
