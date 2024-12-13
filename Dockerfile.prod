@@ -1,0 +1,16 @@
+FROM golang:1.23.1-alpine
+
+RUN apk add --no-cache git
+
+RUN go install github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+
+WORKDIR /app
+
+COPY . .
+
+RUN go mod download
+
+RUN mkdir /main
+RUN go build -o /main/main ./cmd/server/main.go
+
+CMD ["sh", "-c", "migrate -path=/app/migrations -database 'postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}' up && /main/main"]
