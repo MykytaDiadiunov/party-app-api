@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"go-rest-api/config"
 	"go-rest-api/config/container"
+	"go-rest-api/internal/infra/database"
 	"go-rest-api/internal/infra/http"
+	"log"
 	"os"
 	"os/signal"
 	"runtime/debug"
@@ -35,9 +38,16 @@ func main() {
 		fmt.Printf("Sent cancel to all threads...")
 	}()
 
+	conf := config.GetConfiguration()
+
+	err := database.Migrate(conf)
+	if err != nil {
+		log.Fatalf("Unable to apply migrations: %q\n", err)
+	}
+
 	cont := container.New()
 
-	err := http.Server(
+	err = http.Server(
 		ctx,
 		http.CreateRouter(cont),
 	)
