@@ -3,8 +3,10 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	_ "github.com/lib/pq"
+	"log"
 	"os"
+
+	_ "github.com/lib/pq"
 )
 
 func New() *sql.DB {
@@ -32,7 +34,9 @@ func getConnectionString() string {
 	dbPassword := os.Getenv("DB_PASSWORD")
 	dbName := os.Getenv("DB_NAME")
 	dbPort := os.Getenv("DB_PORT")
+
 	connectingStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", dbHost, dbPort, dbUser, dbPassword, dbName)
+	log.Println(connectingStr)
 
 	return connectingStr
 }
