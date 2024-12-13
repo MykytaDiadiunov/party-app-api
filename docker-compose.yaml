@@ -9,7 +9,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${DB_PORT}:${DB_PORT}"
+      - "${DB_PORT_EXTERNAL}:${DB_PORT}"
 
   app:
     build:
