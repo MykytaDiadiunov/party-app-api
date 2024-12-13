@@ -30,19 +30,5 @@ services:
     depends_on:
       - db
 
-  migrate:
-    image: migrate/migrate
-    container_name: migration_service
-    entrypoint: [
-      "migrate",
-      "-path", "/migrations",
-      "-database", "postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}?sslmode=${SSL_MODE}",
-      "up"
-    ]
-    volumes:
-      - ./migrations:/migrations
-    depends_on:
-      - db
-
 volumes:
   postgres_data:
