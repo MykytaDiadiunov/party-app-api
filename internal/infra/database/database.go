@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -37,7 +36,6 @@ func getConnectionString() string {
 	dbSslmode := os.Getenv("SSL_MODE")
 
 	connectingStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=%s", dbHost, dbPort, dbUser, dbPassword, dbName, dbSslmode)
-	log.Println(connectingStr)
 
 	return connectingStr
 }

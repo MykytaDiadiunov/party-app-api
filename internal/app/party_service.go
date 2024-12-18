@@ -1,12 +1,12 @@
 package app
 
 import (
-	"encoding/base64"
 	"go-rest-api/internal/domain"
 	"go-rest-api/internal/infra/database/repositories"
 	"go-rest-api/internal/infra/filesystem"
 	"log"
 	"strconv"
+	"time"
 )
 
 type PartyService interface {
@@ -21,16 +21,16 @@ type PartyService interface {
 }
 
 type partyService struct {
-	partyRepo    repositories.PartyRepository
-	userService  UserService
-	imageService filesystem.ImageStorageService
+	partyRepo         repositories.PartyRepository
+	userService       UserService
+	cloudinaryService *filesystem.CloudinaryService
 }
 
-func NewPartyService(partyRepo repositories.PartyRepository, imageServ filesystem.ImageStorageService, userServ UserService) PartyService {
+func NewPartyService(partyRepo repositories.PartyRepository, cloudinaryService *filesystem.CloudinaryService, userServ UserService) PartyService {
 	return partyService{
-		partyRepo:    partyRepo,
-		imageService: imageServ,
-		userService:  userServ,
+		partyRepo:         partyRepo,
+		userService:       userServ,
+		cloudinaryService: cloudinaryService,
 	}
 }
 
@@ -77,6 +77,7 @@ func (p partyService) GetParties(page, limit int32) (domain.Parties, error) {
 func (p partyService) Save(party domain.Party) (domain.Party, error) {
 	user, err := p.userService.FindById(party.CreatorId)
 	if err != nil {
+		log.Printf("Party service Save.UserFineById: %s", err)
 		return domain.Party{}, err
 	}
 
@@ -85,55 +86,66 @@ func (p partyService) Save(party domain.Party) (domain.Party, error) {
 		amountToSpend = 10
 	}
 
-	_, err = p.userService.UpdateUserBalance(user, amountToSpend*(-1))
-	if err != nil {
-		return domain.Party{}, err
+	if party.Image != "" {
+		imageFileName := "file_" + strconv.FormatInt(time.Now().UnixNano(), 32)
+
+		imageUrl, err := p.cloudinaryService.SaveImageToCloudinary(party.Image, imageFileName)
+		if err != nil {
+			log.Printf("Party service Update.SaveImageToCloud: %s", err)
+			return domain.Party{}, err
+		}
+		party.Image = imageUrl
 	}
 
 	createdParty, err := p.partyRepo.Save(party)
 	if err != nil {
+		log.Printf("Party service Save.RepoSave: %s", err)
 		return domain.Party{}, err
 	}
 
-	if party.Image != "" {
-		partyWithNormalImg, err := p.Update(createdParty)
-		if err != nil {
-			err := p.Delete(createdParty.Id)
-			if err != nil {
-				return domain.Party{}, err
-			}
-			return domain.Party{}, err
-		}
-		return partyWithNormalImg, nil
+	_, err = p.userService.UpdateUserBalance(user, amountToSpend*(-1))
+	if err != nil {
+		log.Printf("Party service Save.UpdateUserBalance: %s", err)
+		return domain.Party{}, err
 	}
+
 	return createdParty, nil
 }
 
 func (p partyService) Update(party domain.Party) (domain.Party, error) {
-	currentParty, err := p.partyRepo.FindById(party.Id)
+	partyFromDb, err := p.partyRepo.FindById(party.Id)
 	if err != nil {
+		log.Printf("Party service Update.FindByIdFromRepo: %s", err)
 		return domain.Party{}, err
 	}
 
-	imageExist, imgErr := p.imageService.FileIsExist(party.Image)
-	if imgErr != nil {
-		return domain.Party{}, err
+	if party.Image == "" {
+		party.Image = partyFromDb.Image
 	}
 
-	if !imageExist {
-		id := strconv.FormatUint(party.Id, 10)
-		creatorId := strconv.FormatUint(currentParty.CreatorId, 10)
-		imageFileName := "party_" + id + "_by_user_" + creatorId + ".jpg"
-		err = p.saveImage(imageFileName, party.Image)
+	imageExists := partyFromDb.Image == party.Image
+
+	if !imageExists {
+		if partyFromDb.Image != "" {
+			err = p.cloudinaryService.DeleteImage(partyFromDb.Image)
+			if err != nil {
+				return domain.Party{}, err
+			}
+		}
+
+		imageFileName := "file_" + strconv.FormatInt(time.Now().UnixNano(), 32)
+
+		imageUrl, err := p.cloudinaryService.SaveImageToCloudinary(party.Image, imageFileName)
 		if err != nil {
+			log.Printf("Party service Update.SaveImageToCloud: %s", err)
 			return domain.Party{}, err
 		}
-		party.Image = imageFileName
+		party.Image = imageUrl
 	}
 
-	party.CreatorId = currentParty.CreatorId
 	updatedParty, err := p.partyRepo.Update(party)
 	if err != nil {
+		log.Printf("Party service Update.RepoUpdate: %s", err)
 		return domain.Party{}, err
 	}
 	return updatedParty, nil
@@ -145,28 +157,16 @@ func (p partyService) Delete(id uint64) error {
 		return err
 	}
 
-	err = p.imageService.RemoveImage(deletedParty.Image)
-	if err != nil {
-		log.Println("Error in delete party img")
+	if deletedParty.Image != "" {
+		err = p.cloudinaryService.DeleteImage(deletedParty.Image)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = p.partyRepo.Delete(id)
 	if err != nil {
 		return err
 	}
-	return nil
-}
-
-func (p partyService) saveImage(imageFileName, imageStringData string) error {
-	imageData, err := base64.StdEncoding.DecodeString(imageStringData)
-	if err != nil {
-		return err
-	}
-
-	err = p.imageService.SaveImage(imageFileName, imageData)
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
