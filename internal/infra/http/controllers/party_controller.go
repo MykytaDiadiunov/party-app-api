@@ -6,6 +6,7 @@ import (
 	"go-rest-api/internal/domain"
 	"go-rest-api/internal/infra/http/requests"
 	"go-rest-api/internal/infra/http/resources"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -57,10 +58,9 @@ func (p PartyController) FindById() http.HandlerFunc {
 			return
 		}
 
-		userDto := resources.UserDto{}
 		memberDto := resources.MemberDto{}
 		partyDto := resources.PartyWithMembersDto{}
-		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
+		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, memberDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
 	}
 }
 
@@ -88,7 +88,7 @@ func (p PartyController) FindByCreatorId() http.HandlerFunc {
 			return
 		}
 
-		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+		membersDto := make([]resources.MemberDto, len(domainParties.Parties))
 
 		for i := range domainParties.Parties {
 			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
@@ -96,12 +96,12 @@ func (p PartyController) FindByCreatorId() http.HandlerFunc {
 				InternalServerError(w, err)
 			}
 
-			userDto := resources.UserDto{}
-			usersDto[i] = userDto.DomainToDto(domainUser)
+			memberDto := resources.MemberDto{}
+			membersDto[i] = memberDto.DomainToDto(domainUser)
 		}
 
 		partyDto := resources.PartyDto{}
-		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
+		Success(w, partyDto.DomainToDtoCollection(domainParties, membersDto))
 	}
 }
 
@@ -128,7 +128,7 @@ func (p PartyController) GetPartiesByFavoriteUsers() http.HandlerFunc {
 			return
 		}
 
-		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+		membersDto := make([]resources.MemberDto, len(domainParties.Parties))
 
 		for i := range domainParties.Parties {
 			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
@@ -136,12 +136,12 @@ func (p PartyController) GetPartiesByFavoriteUsers() http.HandlerFunc {
 				InternalServerError(w, err)
 			}
 
-			userDto := resources.UserDto{}
-			usersDto[i] = userDto.DomainToDto(domainUser)
+			memberDto := resources.MemberDto{}
+			membersDto[i] = memberDto.DomainToDto(domainUser)
 		}
 
 		partyDto := resources.PartyDto{}
-		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
+		Success(w, partyDto.DomainToDtoCollection(domainParties, membersDto))
 	}
 }
 
@@ -167,7 +167,7 @@ func (p PartyController) GetParties() http.HandlerFunc {
 			return
 		}
 
-		usersDto := make([]resources.UserDto, len(domainParties.Parties))
+		membersDto := make([]resources.MemberDto, len(domainParties.Parties))
 
 		for i := range domainParties.Parties {
 			domainUser, err := p.userService.FindById(domainParties.Parties[i].CreatorId)
@@ -175,12 +175,12 @@ func (p PartyController) GetParties() http.HandlerFunc {
 				InternalServerError(w, err)
 			}
 
-			userDto := resources.UserDto{}
-			usersDto[i] = userDto.DomainToDto(domainUser)
+			memberDto := resources.MemberDto{}
+			membersDto[i] = memberDto.DomainToDto(domainUser)
 		}
 
 		partyDto := resources.PartyDto{}
-		Success(w, partyDto.DomainToDtoCollection(domainParties, usersDto))
+		Success(w, partyDto.DomainToDtoCollection(domainParties, membersDto))
 	}
 }
 
@@ -208,12 +208,14 @@ func (p PartyController) Save() http.HandlerFunc {
 
 		domainParty, err = p.partyService.Save(domainParty)
 		if err != nil {
+			log.Printf("Party controller: save %s", err)
 			InternalServerError(w, err)
 			return
 		}
 
 		domainPartyMembers, err := p.memberService.FindByPartyId(domainParty.Id)
 		if err != nil {
+			log.Printf("Party controller: domain party members %s", err)
 			InternalServerError(w, err)
 			return
 		}
@@ -224,17 +226,17 @@ func (p PartyController) Save() http.HandlerFunc {
 			return
 		}
 
-		userDto := resources.UserDto{}
 		memberDto := resources.MemberDto{}
 		partyDto := resources.PartyWithMembersDto{}
-
-		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
+		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, memberDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
 	}
 }
 
 func (p PartyController) Update() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		partyId := chi.URLParam(r, "partyId")
+		creatorUser := r.Context().Value(UserKey).(domain.User)
+
 		if partyId == "" {
 			BadRequest(w, errors.New("invalid partyId"))
 			return
@@ -259,6 +261,7 @@ func (p PartyController) Update() http.HandlerFunc {
 		}
 
 		newPartyDomain.Id = numericPartyId
+		newPartyDomain.CreatorId = creatorUser.Id
 
 		domainParty, err := p.partyService.Update(newPartyDomain)
 		if err != nil {
@@ -278,10 +281,9 @@ func (p PartyController) Update() http.HandlerFunc {
 			return
 		}
 
-		userDto := resources.UserDto{}
 		memberDto := resources.MemberDto{}
 		partyDto := resources.PartyWithMembersDto{}
-		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, userDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
+		Success(w, partyDto.DomainPartyWithMembersToDto(domainParty, memberDto.DomainToDto(domainUser), memberDto.DomainToDtoCollection(domainPartyMembers)))
 	}
 }
 

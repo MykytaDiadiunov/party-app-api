@@ -25,6 +25,9 @@ services:
       DB_NAME: ${DB_NAME}
       DB_PORT: ${DB_PORT}
       SSL_MODE: ${SSL_MODE}
+      CLOUDINARY_NAME_KEY: ${CLOUDINARY_NAME_KEY}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_SECRET_KEY: ${CLOUDINARY_SECRET_KEY}
     volumes:
       - .:/app
     depends_on:

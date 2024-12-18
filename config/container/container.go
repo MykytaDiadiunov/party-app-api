@@ -1,6 +1,7 @@
 package container
 
 import (
+	"go-rest-api/config"
 	"go-rest-api/internal/app"
 	"go-rest-api/internal/infra/database"
 	"go-rest-api/internal/infra/database/repositories"
@@ -41,6 +42,7 @@ type Middleware struct {
 func New() Container {
 	tknAuth := jwtauth.New("HS256", []byte("1234567890"), nil)
 	db := database.New()
+	cfg := config.GetConfiguration()
 
 	userRepo := repositories.NewUserRepository(db)
 	sessionRepo := repositories.NewSessionRepository(db)
@@ -48,10 +50,12 @@ func New() Container {
 	memberRepo := repositories.NewMemberRepository(db)
 	likeRepo := repositories.NewLikeRepository(db)
 
-	imageService := filesystem.NewImageStorageService("file_storage")
+	// imageService := filesystem.NewImageStorageService("file_storage")
+	cloudinaryService := filesystem.NewCloudinaryService(cfg)
+
 	userService := app.NewUserService(userRepo)
 	sessionService := app.NewSessionService(sessionRepo, userService, tknAuth)
-	partyService := app.NewPartyService(partyRepo, imageService, userService)
+	partyService := app.NewPartyService(partyRepo, cloudinaryService, userService)
 	memberService := app.NewMemberService(memberRepo, userService, partyService)
 	likeService := app.NewLikeService(likeRepo, userService)
 
